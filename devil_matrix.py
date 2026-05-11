@@ -67,6 +67,8 @@ def red_depth_image(
     contrast: float,
     min_red: int,
     max_red: int,
+    black_point: float,
+    white_point: float,
     alpha_threshold: int,
     background_red: int,
 ) -> Image.Image:
@@ -77,13 +79,27 @@ def red_depth_image(
         rgb = ImageEnhance.Contrast(image.convert("RGB")).enhance(contrast)
         image = Image.merge("RGBA", (*rgb.split(), image.getchannel("A")))
 
+    source_pixels = list(image.getdata())
+    luminance_values = [
+        0.2126 * red + 0.7152 * green + 0.0722 * blue
+        for red, green, blue, alpha in source_pixels
+        if alpha > alpha_threshold
+    ]
+    luminance_values.sort()
+    low_index = clamp(len(luminance_values) * black_point / 100, 0, max(0, len(luminance_values) - 1))
+    high_index = clamp(len(luminance_values) * white_point / 100, 0, max(0, len(luminance_values) - 1))
+    low = luminance_values[low_index] if luminance_values else 0
+    high = luminance_values[high_index] if luminance_values else 255
+    spread = max(1, high - low)
+
     pixels = []
-    for red, green, blue, alpha in image.getdata():
+    for red, green, blue, alpha in source_pixels:
         if alpha <= alpha_threshold:
             pixels.append((background_red, 0, 0))
             continue
 
-        luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+        luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue - low) / spread
+        luminance = max(0.0, min(1.0, luminance))
         alpha_ratio = alpha / 255
         level = (luminance ** gamma) * alpha_ratio
         output_red = min_red + level * (max_red - min_red)
@@ -103,6 +119,8 @@ def save_processed(args: argparse.Namespace) -> Image.Image:
         contrast=args.contrast,
         min_red=args.min_red,
         max_red=args.max_red,
+        black_point=args.black_point,
+        white_point=args.white_point,
         alpha_threshold=args.alpha_threshold,
         background_red=args.background_red,
     )
@@ -178,10 +196,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preview-scale", type=int, default=8)
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--padding", type=int, default=1)
-    parser.add_argument("--gamma", type=float, default=0.75)
-    parser.add_argument("--contrast", type=float, default=1.15)
-    parser.add_argument("--min-red", type=int, default=2)
+    parser.add_argument("--gamma", type=float, default=1.45)
+    parser.add_argument("--contrast", type=float, default=1.6)
+    parser.add_argument("--min-red", type=int, default=1)
     parser.add_argument("--max-red", type=int, default=255)
+    parser.add_argument("--black-point", type=float, default=8.0)
+    parser.add_argument("--white-point", type=float, default=96.0)
     parser.add_argument("--background-red", type=int, default=0)
     parser.add_argument("--alpha-threshold", type=int, default=10)
     parser.add_argument("--rows", type=int, default=64)
@@ -218,4 +238,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

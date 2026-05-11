@@ -1,6 +1,6 @@
 # Red Devil Matrix
 
-Static 64x64 Raspberry Pi HUB75 matrix display for a devil-face image.
+Static 64x64 Raspberry Pi HUB75 matrix display for a portrait image.
 
 The image is rendered as red pixels only. Depth/shading comes from LED brightness: each source pixel is converted to `(red, 0, 0)`.
 
@@ -25,7 +25,11 @@ sudo ./.venv/bin/python3 devil_matrix.py \
   --cols 64 \
   --gpio-slowdown 5 \
   --brightness 80 \
-  --pwm-bits 8
+  --pwm-bits 8 \
+  --contrast 1.6 \
+  --gamma 1.45 \
+  --black-point 8 \
+  --white-point 96
 ```
 
 ## Preview
@@ -36,10 +40,10 @@ python3 devil_matrix.py --preview assets/processed/devil-red-preview.png
 
 ## Tuning
 
-Increase contrast:
+Push the contrast even harder:
 
 ```bash
-sudo ./scripts/run_waveshare.sh --contrast 1.35 --gamma 0.8
+sudo ./scripts/run_waveshare.sh --contrast 1.9 --gamma 1.7 --black-point 12 --white-point 94
 ```
 
 Make it dimmer:
@@ -63,4 +67,3 @@ sudo cp systemd/red-devil-matrix.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now red-devil-matrix
 ```
-
