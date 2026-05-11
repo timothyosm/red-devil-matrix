@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+PYTHON="${PYTHON:-./.venv/bin/python3}"
+if [[ ! -x "$PYTHON" ]]; then
+  PYTHON="$(command -v python3)"
+fi
+
+exec "$PYTHON" devil_matrix.py \
+  --source assets/source/devil.png \
+  --hardware-mapping regular \
+  --no-hardware-pulse \
+  --rows 64 \
+  --cols 64 \
+  --gpio-slowdown 5 \
+  --brightness 80 \
+  --pwm-bits 8 \
+  "$@"
+

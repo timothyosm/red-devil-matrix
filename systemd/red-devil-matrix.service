@@ -1,0 +1,14 @@
+[Unit]
+Description=Red devil LED matrix
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/tim/red-devil-matrix
+ExecStart=/home/tim/red-devil-matrix/.venv/bin/python3 /home/tim/red-devil-matrix/devil_matrix.py --source assets/source/devil.png --hardware-mapping regular --no-hardware-pulse --rows 64 --cols 64 --gpio-slowdown 5 --brightness 80 --pwm-bits 8
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target
+
