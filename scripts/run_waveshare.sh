@@ -18,14 +18,16 @@ exec "$PYTHON" devil_matrix.py \
   --gpio-slowdown 5 \
   --brightness 85 \
   --pwm-bits 8 \
-  --contrast 1.15 \
-  --gamma 0.5 \
-  --black-point 1 \
-  --white-point 92 \
-  --detail 1.3 \
+  --padding 0 \
+  --contrast 1.08 \
+  --gamma 0.9 \
+  --black-point 2 \
+  --white-point 94 \
+  --tone-slope 6 \
+  --detail 1.1 \
   --detail-radius 2 \
-  --sharpen 130 \
+  --sharpen 90 \
   --crop 70,30,1120,1080 \
   --min-red 1 \
-  --max-red 255 \
+  --max-red 245 \
   "$@"

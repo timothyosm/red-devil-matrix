@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import math
 import signal
 import sys
 import time
@@ -109,6 +110,7 @@ def red_depth_image(
     max_red: int,
     black_point: float,
     white_point: float,
+    tone_slope: float,
     detail: float,
     detail_radius: float,
     sharpen: int,
@@ -158,9 +160,9 @@ def red_depth_image(
             continue
 
         luminance = (value - low) / spread
-        luminance = max(0.0, min(1.0, luminance))
+        level = 1 / (1 + math.exp(-tone_slope * (luminance - 0.5)))
         alpha_ratio = alpha / 255
-        level = (luminance ** gamma) * alpha_ratio
+        level = (level ** gamma) * alpha_ratio
         output_red = min_red + level * (max_red - min_red)
         pixels.append((clamp(output_red), 0, 0))
 
@@ -180,6 +182,7 @@ def save_processed(args: argparse.Namespace) -> Image.Image:
         max_red=args.max_red,
         black_point=args.black_point,
         white_point=args.white_point,
+        tone_slope=args.tone_slope,
         detail=args.detail,
         detail_radius=args.detail_radius,
         sharpen=args.sharpen,
@@ -267,16 +270,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preview", type=Path)
     parser.add_argument("--preview-scale", type=int, default=8)
     parser.add_argument("--size", type=int, default=64)
-    parser.add_argument("--padding", type=int, default=1)
-    parser.add_argument("--gamma", type=float, default=0.5)
-    parser.add_argument("--contrast", type=float, default=1.15)
+    parser.add_argument("--padding", type=int, default=0)
+    parser.add_argument("--gamma", type=float, default=0.9)
+    parser.add_argument("--contrast", type=float, default=1.08)
     parser.add_argument("--min-red", type=int, default=1)
-    parser.add_argument("--max-red", type=int, default=255)
-    parser.add_argument("--black-point", type=float, default=1.0)
-    parser.add_argument("--white-point", type=float, default=92.0)
-    parser.add_argument("--detail", type=float, default=1.3)
+    parser.add_argument("--max-red", type=int, default=245)
+    parser.add_argument("--black-point", type=float, default=2.0)
+    parser.add_argument("--white-point", type=float, default=94.0)
+    parser.add_argument("--tone-slope", type=float, default=6.0)
+    parser.add_argument("--detail", type=float, default=1.1)
     parser.add_argument("--detail-radius", type=float, default=2.0)
-    parser.add_argument("--sharpen", type=int, default=130)
+    parser.add_argument("--sharpen", type=int, default=90)
     parser.add_argument("--crop", default="70,30,1120,1080")
     parser.add_argument("--background-red", type=int, default=0)
     parser.add_argument("--alpha-threshold", type=int, default=10)
