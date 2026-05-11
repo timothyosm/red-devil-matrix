@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 try:
-    from PIL import Image, ImageEnhance
+    from PIL import Image, ImageEnhance, ImageFilter
 except ImportError as error:
     raise SystemExit("Pillow is required. Install it with: sudo apt install python3-pil") from error
 
@@ -38,6 +38,41 @@ def parse_color(value: str) -> tuple[int, int, int]:
     return color  # type: ignore[return-value]
 
 
+def parse_crop(value: str | None, width: int, height: int) -> tuple[int, int, int, int] | None:
+    if not value:
+        return None
+
+    try:
+        parts = [float(part) for part in value.split(",")]
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("crop must be left,top,right,bottom") from error
+
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError("crop must be left,top,right,bottom")
+
+    if all(0 <= part <= 1 for part in parts):
+        left, top, right, bottom = (
+            parts[0] * width,
+            parts[1] * height,
+            parts[2] * width,
+            parts[3] * height,
+        )
+    else:
+        left, top, right, bottom = parts
+
+    box = (
+        clamp(left, 0, width - 1),
+        clamp(top, 0, height - 1),
+        clamp(right, 1, width),
+        clamp(bottom, 1, height),
+    )
+
+    if box[2] <= box[0] or box[3] <= box[1]:
+        raise argparse.ArgumentTypeError("crop right/bottom must be greater than left/top")
+
+    return box
+
+
 def trim_transparency(image: Image.Image) -> Image.Image:
     alpha = image.getchannel("A")
     bbox = alpha.getbbox()
@@ -48,7 +83,11 @@ def trim_transparency(image: Image.Image) -> Image.Image:
     return image.crop(bbox)
 
 
-def fit_square(image: Image.Image, size: int, padding: int) -> Image.Image:
+def fit_square(image: Image.Image, size: int, padding: int, crop: str | None) -> Image.Image:
+    crop_box = parse_crop(crop, image.width, image.height)
+    if crop_box:
+        image = image.crop(crop_box)
+
     image = trim_transparency(image.convert("RGBA"))
     available = size - padding * 2
     image.thumbnail((available, available), Image.Resampling.LANCZOS)
@@ -70,20 +109,39 @@ def red_depth_image(
     max_red: int,
     black_point: float,
     white_point: float,
+    detail: float,
+    detail_radius: float,
+    sharpen: int,
+    crop: str | None,
     alpha_threshold: int,
     background_red: int,
 ) -> Image.Image:
     image = Image.open(source)
-    image = fit_square(image, size, padding)
+    image = fit_square(image, size, padding, crop)
+    alpha_values = list(image.getchannel("A").getdata())
+    gray = image.convert("L")
 
     if contrast != 1.0:
-        rgb = ImageEnhance.Contrast(image.convert("RGB")).enhance(contrast)
-        image = Image.merge("RGBA", (*rgb.split(), image.getchannel("A")))
+        gray = ImageEnhance.Contrast(gray).enhance(contrast)
 
-    source_pixels = list(image.getdata())
+    if detail:
+        blurred = gray.filter(ImageFilter.GaussianBlur(detail_radius))
+        gray_values = list(gray.getdata())
+        blur_values = list(blurred.getdata())
+        detailed_values = [
+            clamp(value + (value - blur_value) * detail)
+            for value, blur_value in zip(gray_values, blur_values)
+        ]
+        gray = Image.new("L", (size, size))
+        gray.putdata(detailed_values)
+
+    if sharpen:
+        gray = gray.filter(ImageFilter.UnsharpMask(radius=1, percent=sharpen, threshold=1))
+
+    source_values = list(gray.getdata())
     luminance_values = [
-        0.2126 * red + 0.7152 * green + 0.0722 * blue
-        for red, green, blue, alpha in source_pixels
+        value
+        for value, alpha in zip(source_values, alpha_values)
         if alpha > alpha_threshold
     ]
     luminance_values.sort()
@@ -94,12 +152,12 @@ def red_depth_image(
     spread = max(1, high - low)
 
     pixels = []
-    for red, green, blue, alpha in source_pixels:
+    for value, alpha in zip(source_values, alpha_values):
         if alpha <= alpha_threshold:
             pixels.append((background_red, 0, 0))
             continue
 
-        luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue - low) / spread
+        luminance = (value - low) / spread
         luminance = max(0.0, min(1.0, luminance))
         alpha_ratio = alpha / 255
         level = (luminance ** gamma) * alpha_ratio
@@ -122,6 +180,10 @@ def save_processed(args: argparse.Namespace) -> Image.Image:
         max_red=args.max_red,
         black_point=args.black_point,
         white_point=args.white_point,
+        detail=args.detail,
+        detail_radius=args.detail_radius,
+        sharpen=args.sharpen,
+        crop=args.crop,
         alpha_threshold=args.alpha_threshold,
         background_red=args.background_red,
     )
@@ -206,12 +268,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preview-scale", type=int, default=8)
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--padding", type=int, default=1)
-    parser.add_argument("--gamma", type=float, default=1.45)
-    parser.add_argument("--contrast", type=float, default=1.6)
+    parser.add_argument("--gamma", type=float, default=0.5)
+    parser.add_argument("--contrast", type=float, default=1.15)
     parser.add_argument("--min-red", type=int, default=1)
     parser.add_argument("--max-red", type=int, default=255)
-    parser.add_argument("--black-point", type=float, default=8.0)
-    parser.add_argument("--white-point", type=float, default=96.0)
+    parser.add_argument("--black-point", type=float, default=1.0)
+    parser.add_argument("--white-point", type=float, default=92.0)
+    parser.add_argument("--detail", type=float, default=1.3)
+    parser.add_argument("--detail-radius", type=float, default=2.0)
+    parser.add_argument("--sharpen", type=int, default=130)
+    parser.add_argument("--crop", default="70,30,1120,1080")
     parser.add_argument("--background-red", type=int, default=0)
     parser.add_argument("--alpha-threshold", type=int, default=10)
     parser.add_argument("--rows", type=int, default=64)

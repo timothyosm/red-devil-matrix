@@ -25,12 +25,15 @@ sudo ./.venv/bin/python3 devil_matrix.py \
   --rows 64 \
   --cols 64 \
   --gpio-slowdown 5 \
-  --brightness 80 \
+  --brightness 85 \
   --pwm-bits 8 \
-  --contrast 1.6 \
-  --gamma 1.45 \
-  --black-point 8 \
-  --white-point 96
+  --contrast 1.15 \
+  --gamma 0.5 \
+  --black-point 1 \
+  --white-point 92 \
+  --detail 1.3 \
+  --sharpen 130 \
+  --crop 70,30,1120,1080
 ```
 
 ## Preview
@@ -41,10 +44,16 @@ python3 devil_matrix.py --preview assets/processed/devil-red-preview.png
 
 ## Tuning
 
-Push the contrast even harder:
+Show more face detail:
 
 ```bash
-sudo ./scripts/run_waveshare.sh --contrast 1.9 --gamma 1.7 --black-point 12 --white-point 94
+sudo ./scripts/run_waveshare.sh --gamma 0.45 --detail 1.6 --contrast 1.0
+```
+
+Push the contrast harder:
+
+```bash
+sudo ./scripts/run_waveshare.sh --gamma 0.9 --black-point 4 --white-point 88
 ```
 
 Make it dimmer:
