@@ -18,7 +18,8 @@ sudo ./scripts/run_waveshare.sh
 
 ```bash
 sudo ./.venv/bin/python3 devil_matrix.py \
-  --source assets/source/devil.png \
+  --source assets/source/portrait.png \
+  --output /tmp/red-devil-matrix-64.png \
   --hardware-mapping regular \
   --no-hardware-pulse \
   --rows 64 \
@@ -55,8 +56,8 @@ sudo ./scripts/run_waveshare.sh --brightness 45 --max-red 180
 Use a different source image:
 
 ```bash
-cp /path/to/image.png assets/source/devil.png
-python3 devil_matrix.py --preview assets/processed/devil-red-preview.png
+cp /path/to/image.png assets/source/portrait.png
+python3 devil_matrix.py --source assets/source/portrait.png --output assets/processed/devil-red-64.png --preview assets/processed/devil-red-preview.png
 sudo ./scripts/run_waveshare.sh
 ```
 

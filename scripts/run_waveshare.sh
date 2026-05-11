@@ -9,7 +9,8 @@ if [[ ! -x "$PYTHON" ]]; then
 fi
 
 exec "$PYTHON" devil_matrix.py \
-  --source assets/source/devil.png \
+  --source assets/source/portrait.png \
+  --output /tmp/red-devil-matrix-64.png \
   --hardware-mapping regular \
   --no-hardware-pulse \
   --rows 64 \

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import signal
 import sys
 import time
@@ -16,8 +17,8 @@ except ImportError as error:
 
 
 SIZE = 64
-DEFAULT_SOURCE = Path(__file__).parent / "assets/source/devil.png"
-DEFAULT_PROCESSED = Path(__file__).parent / "assets/processed/devil-red-64.png"
+DEFAULT_SOURCE = Path(__file__).parent / "assets/source/portrait.png"
+DEFAULT_PROCESSED = Path("/tmp/red-devil-matrix-64.png")
 
 
 def clamp(value: float, lower: int = 0, upper: int = 255) -> int:
@@ -129,8 +130,17 @@ def save_processed(args: argparse.Namespace) -> Image.Image:
     return image
 
 
+def image_fingerprint(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+
+
 def save_preview(args: argparse.Namespace) -> None:
     image = save_processed(args)
+    print(
+        f"source={args.source} sha256={image_fingerprint(args.source)} "
+        f"output={args.output} size={image.size}",
+        flush=True,
+    )
     preview = image.resize((args.size * args.preview_scale, args.size * args.preview_scale), Image.Resampling.NEAREST)
     args.preview.parent.mkdir(parents=True, exist_ok=True)
     preview.save(args.preview)
